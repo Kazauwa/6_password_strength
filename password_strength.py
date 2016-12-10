@@ -1,5 +1,6 @@
 import sys
 import re
+from getpass import getpass
 
 
 def load_blacklist(path):
@@ -10,34 +11,37 @@ def load_blacklist(path):
 
 
 def has_mixed_case(password):
+    """Mixed case rule (e.g. 'PassWord')"""
     if not password.isupper() and not password.islower():
         return True
-    print('\nPassword does not consist of mixed case!')
     return False
 
 
 def has_digit(password):
+    """Digit inclusion rule (e.g. 'password123')"""
     if re.findall('\d+', password):
         return True
-    print('\nPassword does not contain any digits!')
     return False
 
 
 def has_special_chars(password):
+    """Special char inclusion rule (e.g. 'p@$$word')"""
     if re.findall('[^A-Za-z0-9]', password):
         return True
-    print('\nPassword does not contain any special characters!')
     return False
 
 
-def is_in_blacklist(password):
-    if password in blacklist:
-        print('\nPassword is in blacklist of common passwords!')
+def not_in_blacklist(password):
+    """Blacklist rule (if password is in list of frequently-used passwords)"""
+    if not blacklist:
         return True
-    return False
+    if password in blacklist:
+        return False
+    return True
 
 
-def is_match_pattern(password):
+def not_match_pattern(password):
+    """Pattern match rule (e.g. if password is number, date or email)"""
     patterns = {'phone': '\+?[0-9\-()\s]+',
                 'email': '\w+\@\w+\.\w+',
                 'date': '([0-9]{1,4}[\\/.\s]?){3}',
@@ -45,31 +49,37 @@ def is_match_pattern(password):
     for name, pattern in patterns.items():
         pattern = re.compile(pattern)
         if pattern.fullmatch(password):
-            print('\nPassword matches common pattern ({0})!'.format(name))
-            return True
-    return False
+            return False
+    return True
 
 
 def get_password_strength(password):
+    test_results = dict()
     score = 10
-    if not has_mixed_case(password):
-        score -= 2
-    if not has_digit(password):
-        score -= 2
-    if not has_special_chars(password):
-        score -= 2
-    if is_in_blacklist(password):
-        score -= 2
-    if is_match_pattern(password):
-        score -= 2
-    return score
+    for test in tests_list:
+        result = test(password)
+        if not result:
+            score -= 2
+        test_results[test.__doc__] = result
+    return score, test_results
 
+
+tests_list = [has_mixed_case,
+              has_digit,
+              has_special_chars,
+              not_in_blacklist,
+              not_match_pattern]
 
 if __name__ == '__main__':
-    blacklist = load_blacklist('62kcmnpass.txt')
-    if len(sys.argv) > 1:
-        password = sys.argv[1]
-    else:
-        password = input('Input password to check: ')
-    score = get_password_strength(password)
-    print('\nPassword \'{0}\' got a score of {1}'.format(password, score))
+    try:
+        blacklist = load_blacklist(sys.argv[1])
+    except IndexError:
+        blacklist = None
+    password = getpass('Input a password to check: ')
+    score, test_results = get_password_strength(password)
+    print('\nYour password got a score of {0}'.format(score))
+    if score < 10:
+        print('\nFailed tests:\n')
+    for test, result in test_results.items():
+        if not result:
+            print('* {}'.format(test))
