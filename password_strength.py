@@ -11,28 +11,28 @@ def load_blacklist(path):
 
 
 def has_mixed_case(password):
-    """Mixed case rule (e.g. 'PassWord')"""
+    """Mixed case (e.g. 'PassWord')"""
     if not password.isupper() and not password.islower():
         return True
     return False
 
 
 def has_digit(password):
-    """Digit inclusion rule (e.g. 'password123')"""
+    """Digit inclusion (e.g. 'password123')"""
     if re.findall('\d+', password):
         return True
     return False
 
 
 def has_special_chars(password):
-    """Special char inclusion rule (e.g. 'p@$$word')"""
+    """Special char inclusion (e.g. 'p@$$word')"""
     if re.findall('[^A-Za-z0-9]', password):
         return True
     return False
 
 
 def not_in_blacklist(password):
-    """Blacklist rule (if password is in list of frequently-used passwords)"""
+    """Blacklist test (if password is in list of frequently-used passwords)"""
     if not blacklist:
         return True
     if password in blacklist:
@@ -54,14 +54,13 @@ def not_match_pattern(password):
 
 
 def get_password_strength(password):
-    test_results = dict()
+    failed_tests = list()
     score = 10
     for test in tests_list:
-        result = test(password)
-        if not result:
+        if not test(password):
             score -= 2
-        test_results[test.__doc__] = result
-    return score, test_results
+            failed_tests.append(test.__doc__)
+    return score, failed_tests
 
 
 tests_list = [has_mixed_case,
@@ -76,10 +75,9 @@ if __name__ == '__main__':
     except IndexError:
         blacklist = None
     password = getpass('Input a password to check: ')
-    score, test_results = get_password_strength(password)
+    score, failed_tests = get_password_strength(password)
     print('\nYour password got a score of {0}'.format(score))
     if score < 10:
         print('\nFailed tests:\n')
-    for test, result in test_results.items():
-        if not result:
-            print('* {}'.format(test))
+    for test in failed_tests:
+        print('* {}'.format(test))
